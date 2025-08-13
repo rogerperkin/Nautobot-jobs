@@ -1,6 +1,6 @@
 from nautobot.extras.jobs import Job
 from nautobot.dcim.models import Device
-from utilities.exceptions import AbortTransaction
+
 from nautobot.apps.jobs import Job, register_jobs
 import re
 
