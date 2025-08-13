@@ -95,7 +95,7 @@ class JunosInterfaceStatusJob(Job):
             output = net_connect.send_command(command)
             
             # Also get basic interface information
-            basic_info = net_connect.send_command(f"show interfaces {self.interface_name}")
+            basic_info = net_connect.send_command(f"show interfaces {self.interface_name.value}")
             
             return {
                 'main_output': output,
@@ -105,8 +105,7 @@ class JunosInterfaceStatusJob(Job):
     
     def _generate_show_command(self):
         """Generate the appropriate show interfaces command based on detail level."""
-        
-        return f"show interfaces {self.interface_name} terse" 
+        return f"show interfaces {self.interface_name.value} terse" 
     
     def _format_output(self, output_dict):
         """Format the command output for better readability."""
@@ -115,7 +114,7 @@ class JunosInterfaceStatusJob(Job):
         result.append("=" * 80)
         result.append(f"INTERFACE STATUS REPORT")
         result.append(f"Device: {self.device.name}")
-        result.append(f"Interface: {self.interface_name}")
+        result.append(f"Interface: {self.interface_name.value}")
        
         result.append(f"Command Executed: {output_dict['command']}")
         result.append("=" * 80)
@@ -213,7 +212,7 @@ class JunosInterfaceStatusJobWithEnvCreds(JunosInterfaceStatusJob):
             # Also get basic interface information for brief mode
             basic_info = ""
             result.append("Detail Level: brief (default)")
-            basic_info = net_connect.send_command(f"show interfaces {self.interface_name}")
+            basic_info = net_connect.send_command(f"show interfaces {self.interface_name.value}")
             
             return {
                 'main_output': output,
