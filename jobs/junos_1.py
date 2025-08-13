@@ -22,37 +22,36 @@ class JunosInterfaceStatusJob(Job):
         description="Interface name (e.g., ge-0/0/0)"
     )
 
-    def run(self, device, interface_name):
-        platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
-        if "junos" not in platform_name:
-            self.log_failure(f"Device {device.name} is not a Junos device")
+def run(self, device, interface_name):
+    platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
+    if "junos" not in platform_name:
+        self.log(level="failure", message=f"Device {device.name} is not a Junos device")
+        return
+
+    active_status = Status.objects.get(name="Active")
+    if device.status != active_status:
+        self.log(level="failure", message=f"Device {device.name} is not in Active status")
+        return
+
+    if not (device.primary_ip4 or device.primary_ip6):
+        self.log(level="failure", message=f"Device {device.name} has no primary IP address")
+        return
+
+    device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
+
+    try:
+        output = self._get_interface_status(device_ip, interface_name)
+        if not output or not output.get("main_output"):
+            self.log(level="warning", message=f"No output for interface {interface_name} on {device.name}")
             return
 
-        active_status = Status.objects.get(name="Active")
-        if device.status != active_status:
-            self.log_failure(f"Device {device.name} is not in Active status")
-            return
+        admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
+        report = self._format_plain_output(device.name, interface_name, admin, link, proto, output)
+        self.log(level="info", message=report)
 
-        if not (device.primary_ip4 or device.primary_ip6):
-            self.log_failure(f"Device {device.name} has no primary IP address")
-            return
+    except Exception as e:
+        self.log(level="failure", message=f"Error retrieving interface status: {e}")
 
-        device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
-
-        try:
-            output = self._get_interface_status(device_ip, interface_name)
-            if not output or not output.get("main_output"):
-                self.log_warning(f"No output for interface {interface_name} on {device.name}")
-                return
-
-            admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
-
-            # Log the output cleanly
-            report = self._format_plain_output(device.name, interface_name, admin, link, proto, output)
-            self.log_info(report)
-
-        except Exception as e:
-            self.log_failure(f"Error retrieving interface status: {e}")
 
     def _get_interface_status(self, device_ip, interface_name):
         creds = {
