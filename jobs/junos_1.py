@@ -2,7 +2,7 @@ from nautobot.extras.jobs import Job, StringVar, ObjectVar
 from nautobot.dcim.models import Device
 from nautobot.extras.models import Status
 from netmiko import ConnectHandler
-from nautobot.apps.jobs import Job, register_jobs
+from nautobot.apps.jobs import register_jobs
 import logging
 import os
 
@@ -45,7 +45,7 @@ class JunosInterfaceStatusJob(Job):
         try:
             output = self._get_interface_status(device_ip, interface_name)
 
-            if not output:
+            if not output or not output.get("main_output"):
                 return f"No output received for interface {interface_name} on {device.name}"
 
             # Parse terse output for status summary
@@ -53,11 +53,12 @@ class JunosInterfaceStatusJob(Job):
 
             # Add summary log
             self.logger.info(
-                f"Interface {interface_name} on {device.name} is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
+                f"Interface {interface_name} on {device.name} is {link.upper()} "
+                f"(Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
             )
 
-            # Format final output
-            return self._format_output(device.name, interface_name, output, admin, link, proto)
+            # Format final output with both summary and CLI outputs
+            return self._format_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
             error_msg = f"Error retrieving interface status: {str(e)}"
@@ -73,23 +74,25 @@ class JunosInterfaceStatusJob(Job):
             'timeout': 30,
         }
 
-        command = f"show interfaces {interface_name} terse"
+        terse_command = f"show interfaces {interface_name} terse"
+        detailed_command = f"show interfaces {interface_name}"
 
-        self.logger.info(f"Executing command: {command}")
+        self.logger.info(f"Executing command: {terse_command}")
 
         with ConnectHandler(**creds) as net_connect:
-            main_output = net_connect.send_command(command)
-            detailed_output = net_connect.send_command(f"show interfaces {interface_name}")
+            main_output = net_connect.send_command(terse_command)
+            detailed_output = net_connect.send_command(detailed_command)
             return {
                 "main_output": main_output,
                 "detailed_output": detailed_output,
-                "command": command
+                "terse_command": terse_command,
+                "detailed_command": detailed_command
             }
 
     def _parse_status_from_terse(self, output, iface):
         lines = output.strip().splitlines()
         for line in lines:
-            if line.startswith(iface):
+            if line.split()[0].startswith(iface):
                 parts = line.split()
                 admin = parts[1] if len(parts) > 1 else "unknown"
                 link = parts[2] if len(parts) > 2 else "unknown"
@@ -97,7 +100,7 @@ class JunosInterfaceStatusJob(Job):
                 return admin, link, proto
         return "unknown", "unknown", "unknown"
 
-    def _format_output(self, device_name, interface_name, admin, link, proto):
+    def _format_output(self, device_name, interface_name, admin, link, proto, output):
         def status_icon(value):
             if value.lower() == "up":
                 return "✅"
@@ -118,10 +121,16 @@ class JunosInterfaceStatusJob(Job):
         result.append(f"🔄 Protocol Status:  {proto.upper()} {status_icon(proto)}")
         result.append("")
         result.append("=" * 80)
+        result.append("RAW CLI OUTPUTS")
+        result.append("=" * 80)
+        result.append(f"$ {output['terse_command']}")
+        result.append(output["main_output"])
+        result.append("")
+        result.append(f"$ {output['detailed_command']}")
+        result.append(output["detailed_output"])
+        result.append("=" * 80)
 
         return "\n".join(result)
-
-
 
 
 register_jobs(JunosInterfaceStatusJob)
