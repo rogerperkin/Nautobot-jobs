@@ -110,10 +110,10 @@ class JunosInterfaceStatusJob(Job):
             return f'<span style="color:red; font-weight:bold;">{value.upper()} ❌</span>'
         else:
             return f'<span style="color:orange; font-weight:bold;">{value.upper()} ❓</span>'
-
+        
     def _format_preformatted_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
-        report.append("<pre>")
+        report.append('<div style="font-family:monospace; white-space:pre;">')
         report.append("=" * 80)
         report.append("INTERFACE STATUS REPORT")
         report.append(f"Device: {device_name}")
@@ -131,8 +131,9 @@ class JunosInterfaceStatusJob(Job):
         report.append(f"<b>$ {output['detailed_command']}</b>")
         report.append(output["detailed_output"])
         report.append("=" * 80)
-        report.append("</pre>")
+        report.append("</div>")
         return "\n".join(report)
+
 
 
 
