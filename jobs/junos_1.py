@@ -45,12 +45,12 @@ class JunosInterfaceStatusJob(Job):
             return f"ERROR: Device {device.name} is not in Active status"
         
         # Check if device has primary IP
-        if not (self.device.primary_ip4 or device.primary_ip6):
+        if not (device.primary_ip4 or device.primary_ip6):
             self.logger.error(f"Device {device.name} has no primary IP address configured")
             return f"ERROR: Device {device.name} has no primary IP address configured"
         
         # Get device IP
-        device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
+        device_ip = str(device.primary_ip4).split('/')[0]
         
         try:
             # Connect to device and get interface status
