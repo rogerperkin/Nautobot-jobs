@@ -40,7 +40,7 @@ class JunosInterfaceStatusJob(Job):
         
         # Check if device is reachable/active
         active_status = Status.objects.get(name="Active")
-        if self.device.status != active_status:
+        if device.status != active_status:
             self.logger.error(f"Device {device.name} is not in Active status")
             return f"ERROR: Device {device.name} is not in Active status"
         
