@@ -4,6 +4,10 @@ from nautobot.extras.models import Status
 from netmiko import ConnectHandler
 from nautobot.apps.jobs import register_jobs
 import os
+import logging
+
+# Configure logger for this module
+logger = logging.getLogger(__name__)
 
 class JunosInterfaceStatusJob(Job):
     class Meta:
@@ -25,27 +29,39 @@ class JunosInterfaceStatusJob(Job):
     def run(self, device, interface_name):
         platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
         if "junos" not in platform_name:
-            return f"ERROR: Device {device.name} is not a Junos device"
+            msg = f"Device {device.name} is not a Junos device"
+            logger.error(msg)
+            return f"ERROR: {msg}"
 
         active_status = Status.objects.get(name="Active")
         if device.status != active_status:
-            return f"ERROR: Device {device.name} is not in Active status"
+            msg = f"Device {device.name} is not in Active status"
+            logger.error(msg)
+            return f"ERROR: {msg}"
 
         if not (device.primary_ip4 or device.primary_ip6):
-            return f"ERROR: Device {device.name} has no primary IP address"
+            msg = f"Device {device.name} has no primary IP address"
+            logger.error(msg)
+            return f"ERROR: {msg}"
 
         device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
 
         try:
             output = self._get_interface_status(device_ip, interface_name)
             if not output or not output.get("main_output"):
-                return f"WARNING: No output for interface {interface_name} on {device.name}"
+                msg = f"No output for interface {interface_name} on {device.name}"
+                logger.warning(msg)
+                return f"WARNING: {msg}"
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
+            logger.info(f"Interface {interface_name} on {device.name}: Admin={admin}, Link={link}, Proto={proto}")
+
             return self._format_plain_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
-            return f"ERROR: Error retrieving interface status: {e}"
+            msg = f"Error retrieving interface status: {e}"
+            logger.error(msg)
+            return f"ERROR: {msg}"
 
     def _get_interface_status(self, device_ip, interface_name):
         creds = {
@@ -62,6 +78,8 @@ class JunosInterfaceStatusJob(Job):
         with ConnectHandler(**creds) as net_connect:
             main_output = net_connect.send_command(terse_command)
             detailed_output = net_connect.send_command(detailed_command)
+            logger.debug(f"Terse output for {interface_name}:\n{main_output}")
+            logger.debug(f"Detailed output for {interface_name}:\n{detailed_output}")
             return {
                 "main_output": main_output,
                 "detailed_output": detailed_output,
