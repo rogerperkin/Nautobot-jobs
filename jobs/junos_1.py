@@ -25,32 +25,27 @@ class JunosInterfaceStatusJob(Job):
     def run(self, device, interface_name):
         platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
         if "junos" not in platform_name:
-            self.log(level="failure", message=f"Device {device.name} is not a Junos device")
-            return
+            return f"ERROR: Device {device.name} is not a Junos device"
 
         active_status = Status.objects.get(name="Active")
         if device.status != active_status:
-            self.log(level="failure", message=f"Device {device.name} is not in Active status")
-            return
+            return f"ERROR: Device {device.name} is not in Active status"
 
         if not (device.primary_ip4 or device.primary_ip6):
-            self.log(level="failure", message=f"Device {device.name} has no primary IP address")
-            return
+            return f"ERROR: Device {device.name} has no primary IP address"
 
         device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
 
         try:
             output = self._get_interface_status(device_ip, interface_name)
             if not output or not output.get("main_output"):
-                self.log(level="warning", message=f"No output for interface {interface_name} on {device.name}")
-                return
+                return f"WARNING: No output for interface {interface_name} on {device.name}"
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
-            report = self._format_plain_output(device.name, interface_name, admin, link, proto, output)
-            self.log(level="info", message=report)
+            return self._format_plain_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
-            self.log(level="failure", message=f"Error retrieving interface status: {e}")
+            return f"ERROR: Error retrieving interface status: {e}"
 
     def _get_interface_status(self, device_ip, interface_name):
         creds = {
@@ -95,7 +90,7 @@ class JunosInterfaceStatusJob(Job):
         report_lines.append(f"Admin Status:     {admin.upper()}")
         report_lines.append(f"Link Status:      {link.upper()}")
         report_lines.append(f"Protocol Status:  {proto.upper()}")
-        report_lines.append(f"\nRaw CLI Outputs:\n")
+        report_lines.append("\nRaw CLI Outputs:\n")
         report_lines.append(f"$ {output['terse_command']}")
         report_lines.append(output["main_output"])
         report_lines.append(f"$ {output['detailed_command']}")
