@@ -8,10 +8,16 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# ANSI Colors for Nautobot terminal-style output
+ANSI_GREEN = "\033[92m"
+ANSI_RED = "\033[91m"
+ANSI_YELLOW = "\033[93m"
+ANSI_RESET = "\033[0m"
+
 class JunosInterfaceStatusJob(Job):
     class Meta:
         name = "Show Junos Interface Status"
-        description = "Display interface status for a Junos device (HTML formatted)"
+        description = "Display interface status for a Junos device (readable + colored)"
         has_sensitive_variables = False
 
     device = ObjectVar(
@@ -28,28 +34,40 @@ class JunosInterfaceStatusJob(Job):
     def run(self, device, interface_name):
         platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
         if "junos" not in platform_name:
-            return self._error_html(f"Device <b>{device.name}</b> is not a Junos device")
+            self.log_failure(f"Device {device.name} is not a Junos device")
+            return self._error_block(f"Device {device.name} is not a Junos device")
 
         active_status = Status.objects.get(name="Active")
         if device.status != active_status:
-            return self._error_html(f"Device <b>{device.name}</b> is not in Active status")
+            self.log_failure(f"Device {device.name} is not in Active status")
+            return self._error_block(f"Device {device.name} is not in Active status")
 
         if not (device.primary_ip4 or device.primary_ip6):
-            return self._error_html(f"Device <b>{device.name}</b> has no primary IP address")
+            self.log_failure(f"Device {device.name} has no primary IP address")
+            return self._error_block(f"Device {device.name} has no primary IP address")
 
         device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
 
         try:
             output = self._get_interface_status(device_ip, interface_name)
             if not output or not output.get("main_output"):
-                return self._error_html(f"No output received for interface {interface_name} on {device.name}")
+                self.log_warning(f"No output for interface {interface_name} on {device.name}")
+                return self._error_block(f"No output for interface {interface_name} on {device.name}")
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
 
-            return self._format_html_output(device.name, interface_name, admin, link, proto, output)
+            # Keep the log entry you liked
+            self.log_info(
+                f"Interface {interface_name} on {device.name} "
+                f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
+            )
+
+            return self._format_preformatted_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
-            return self._error_html(f"Error retrieving interface status: {str(e)}")
+            error_msg = f"Error retrieving interface status: {str(e)}"
+            self.log_failure(error_msg)
+            return self._error_block(error_msg)
 
     def _get_interface_status(self, device_ip, interface_name):
         creds = {
@@ -84,31 +102,38 @@ class JunosInterfaceStatusJob(Job):
                 return admin, link, proto
         return "unknown", "unknown", "unknown"
 
-    def _format_html_output(self, device_name, interface_name, admin, link, proto, output):
-        def status_label(value):
-            color_map = {"up": "green", "down": "red", "unknown": "gray"}
-            icon_map = {"up": "✅", "down": "❌", "unknown": "❓"}
-            val = value.lower()
-            color = color_map.get(val, "gray")
-            icon = icon_map.get(val, "❓")
-            return f'<span style="color:{color}; font-weight:bold;">{value.upper()} {icon}</span>'
+    def _status_color(self, value):
+        v = value.lower()
+        if v == "up":
+            return f"{ANSI_GREEN}{value.upper()} ✅{ANSI_RESET}"
+        elif v == "down":
+            return f"{ANSI_RED}{value.upper()} ❌{ANSI_RESET}"
+        else:
+            return f"{ANSI_YELLOW}{value.upper()} ❓{ANSI_RESET}"
 
-        html = []
-        html.append("<h2>Interface Status Report</h2>")
-        html.append(f"<b>Device:</b> {device_name}<br>")
-        html.append(f"<b>Interface:</b> {interface_name}<br><br>")
-        html.append(f"🔧 <b>Admin Status:</b> {status_label(admin)}<br>")
-        html.append(f"📡 <b>Link Status:</b> {status_label(link)}<br>")
-        html.append(f"🔄 <b>Protocol Status:</b> {status_label(proto)}<br><br>")
-        html.append("<h3>Raw CLI Outputs</h3>")
-        html.append(f"<b>$ {output['terse_command']}</b>")
-        html.append(f"<pre>{output['main_output']}</pre>")
-        html.append(f"<b>$ {output['detailed_command']}</b>")
-        html.append(f"<pre>{output['detailed_output']}</pre>")
-        return "\n".join(html)
+    def _format_preformatted_output(self, device_name, interface_name, admin, link, proto, output):
+        report = []
+        report.append("=" * 80)
+        report.append("INTERFACE STATUS REPORT")
+        report.append(f"Device: {device_name}")
+        report.append(f"Interface: {interface_name}")
+        report.append("=" * 80)
+        report.append(f"🔧 Admin Status:     {self._status_color(admin)}")
+        report.append(f"📡 Link Status:      {self._status_color(link)}")
+        report.append(f"🔄 Protocol Status:  {self._status_color(proto)}")
+        report.append("=" * 80)
+        report.append("RAW CLI OUTPUTS")
+        report.append("=" * 80)
+        report.append(f"$ {output['terse_command']}")
+        report.append(output["main_output"])
+        report.append("")
+        report.append(f"$ {output['detailed_command']}")
+        report.append(output["detailed_output"])
+        report.append("=" * 80)
+        return f"<pre>{'\n'.join(report)}</pre>"
 
-    def _error_html(self, message):
-        return f'<span style="color:red; font-weight:bold;">ERROR:</span> {message}'
+    def _error_block(self, message):
+        return f"<pre>{ANSI_RED}ERROR: {message}{ANSI_RESET}</pre>"
 
 
 register_jobs(JunosInterfaceStatusJob)
