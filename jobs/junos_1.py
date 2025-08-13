@@ -59,7 +59,7 @@ class JunosInterfaceStatusJob(Job):
             # Log the full status
             self.logger.info(
                 f"Interface {interface_name} on {device.name} "
-                f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
+                f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})")
 
             # Return a concise report for Nautobot
             return self._format_concise_output(device.name, interface_name, admin, link, proto, output)
