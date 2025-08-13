@@ -1,6 +1,6 @@
 from nautobot.extras.jobs import Job, FileVar, StringVar, BooleanVar, ObjectVar
 from nautobot.dcim.models import Device, DeviceType, Location, Platform, Manufacturer, Interface
-from nautobot.extras.models import Status, DeviceRole
+from nautobot.extras.models import Status, Role
 from django.core.exceptions import ValidationError
 import pandas as pd
 import io
@@ -56,7 +56,7 @@ class SpreadsheetImportJob(Job):
     )
     
     default_device_role = ObjectVar(
-        model=DeviceRole,
+        model=Role,
         required=True,
         description="Default device role for all devices"
     )
