@@ -2,6 +2,7 @@ from nautobot.extras.jobs import Job, StringVar, ObjectVar
 from nautobot.dcim.models import Device
 from nautobot.extras.models import Status
 from netmiko import ConnectHandler
+from nautobot.apps.jobs import Job, register_jobs
 import logging
 import os
 
