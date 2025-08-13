@@ -105,14 +105,15 @@ class JunosInterfaceStatusJob(Job):
     def _status_color(self, value):
         v = value.lower()
         if v == "up":
-            return f"{ANSI_GREEN}{value.upper()} ✅{ANSI_RESET}"
+            return f'<span style="color:green; font-weight:bold;">{value.upper()} ✅</span>'
         elif v == "down":
-            return f"{ANSI_RED}{value.upper()} ❌{ANSI_RESET}"
+            return f'<span style="color:red; font-weight:bold;">{value.upper()} ❌</span>'
         else:
-            return f"{ANSI_YELLOW}{value.upper()} ❓{ANSI_RESET}"
+            return f'<span style="color:orange; font-weight:bold;">{value.upper()} ❓</span>'
 
     def _format_preformatted_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
+        report.append("<pre>")
         report.append("=" * 80)
         report.append("INTERFACE STATUS REPORT")
         report.append(f"Device: {device_name}")
@@ -124,16 +125,15 @@ class JunosInterfaceStatusJob(Job):
         report.append("=" * 80)
         report.append("RAW CLI OUTPUTS")
         report.append("=" * 80)
-        report.append(f"$ {output['terse_command']}")
+        report.append(f"<b>$ {output['terse_command']}</b>")
         report.append(output["main_output"])
         report.append("")
-        report.append(f"$ {output['detailed_command']}")
+        report.append(f"<b>$ {output['detailed_command']}</b>")
         report.append(output["detailed_output"])
         report.append("=" * 80)
-        return f"<pre>{'\n'.join(report)}</pre>"
+        report.append("</pre>")
+        return "\n".join(report)
 
-    def _error_block(self, message):
-        return f"<pre>{ANSI_RED}ERROR: {message}{ANSI_RESET}</pre>"
 
 
 register_jobs(JunosInterfaceStatusJob)
