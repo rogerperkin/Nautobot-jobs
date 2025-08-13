@@ -78,8 +78,6 @@ class JunosInterfaceStatusJob(Job):
         with ConnectHandler(**creds) as net_connect:
             main_output = net_connect.send_command(terse_command)
             detailed_output = net_connect.send_command(detailed_command)
-            logger.debug(f"Terse output for {interface_name}:\n{main_output}")
-            logger.debug(f"Detailed output for {interface_name}:\n{detailed_output}")
             return {
                 "main_output": main_output,
                 "detailed_output": detailed_output,
