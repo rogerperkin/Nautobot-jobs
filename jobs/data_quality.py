@@ -245,5 +245,5 @@ register_jobs(
     VerifyPrimaryIP,
     VerifyHasRack,
     VerifyCircuitTermination,
-    VierfyManagementIP
+    VerifyManagementIP
 )
