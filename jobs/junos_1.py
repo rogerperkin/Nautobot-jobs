@@ -28,7 +28,7 @@ class JunosInterfaceStatusJob(Job):
         description="Interface name (e.g., ge-0/0/1, xe-0/0/0, et-0/0/0)"
     )
 
-    def run(self, device, interface_name, show_detail):
+    def run(self, device, interface_name):
 
         """Main job execution method."""
         
@@ -115,7 +115,7 @@ class JunosInterfaceStatusJob(Job):
         result.append(f"INTERFACE STATUS REPORT")
         result.append(f"Device: {self.device.name}")
         result.append(f"Interface: {self.interface_name}")
-        result.append(f"Detail Level: {self.show_detail}")
+       
         result.append(f"Command Executed: {output_dict['command']}")
         result.append("=" * 80)
         result.append("")
@@ -211,8 +211,8 @@ class JunosInterfaceStatusJobWithEnvCreds(JunosInterfaceStatusJob):
             
             # Also get basic interface information for brief mode
             basic_info = ""
-            if self.show_detail == "brief":
-                basic_info = net_connect.send_command(f"show interfaces {self.interface_name}")
+            result.append("Detail Level: brief (default)")
+            basic_info = net_connect.send_command(f"show interfaces {self.interface_name}")
             
             return {
                 'main_output': output,
