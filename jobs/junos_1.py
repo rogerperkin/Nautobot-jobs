@@ -111,40 +111,23 @@ class JunosInterfaceStatusJob(Job):
         else:
             return f"{ANSI_YELLOW}{value.upper()} {ANSI_RESET}"
 
-    def _format_concise_output(self, device_name, interface_name, admin, link, proto, output):
+    def _format_clean_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
-        report.append("=" * 50)
-        report.append("INTERFACE STATUS REPORT")
-        report.append(f"Device: {device_name}")
-        report.append(f"Interface: {interface_name}")
-        report.append("=" * 50)
-        report.append(f" Admin Status:     {self._status_color(admin)}")
-        report.append(f" Link Status:      {self._status_color(link)}")
-        report.append(f" Protocol Status:  {self._status_color(proto)}")
-        
-        # Extract some key info from detailed output
-        details = output.get("detailed_output", "")
-        last_flapped = "Unknown"
-        active_alarms = "None"
-        active_defects = "None"
-        
-        for line in details.splitlines():
-            if "Last flapped" in line:
-                last_flapped = line.split(":", 1)[1].strip()
-            elif "Active alarms" in line:
-                active_alarms = line.split(":", 1)[1].strip()
-            elif "Active defects" in line:
-                active_defects = line.split(":", 1)[1].strip()
-        
-        report.append(f"⏱ Last Flapped:     {last_flapped}")
-        report.append(f"⚠ Active Alarms:    {active_alarms}")
-        report.append(f"❗ Active Defects:   {active_defects}")
-        report.append("=" * 50)
-        
-        return f"<pre>{'\n'.join(report)}</pre>"
 
-    def _error_block(self, message):
-        return f"<pre>{ANSI_RED}ERROR: {message}{ANSI_RESET}</pre>"
+        report.append(f"<h2>Interface Status Report</h2>")
+        report.append(f"<b>Device:</b> {device_name}<br>")
+        report.append(f"<b>Interface:</b> {interface_name}<br><br>")
+        
+        report.append(f"<b>Admin Status:</b> {admin.upper()}<br>")
+        report.append(f"<b>Link Status:</b> {link.upper()}<br>")
+        report.append(f"<b>Protocol Status:</b> {proto.upper()}<br><br>")
+        
+        report.append("<h3>Raw CLI Outputs</h3>")
+        report.append(f"<b>$ {output['terse_command']}</b>")
+        report.append(f"<pre>{output['main_output']}</pre>")
+        report.append(f"<b>$ {output['detailed_command']}</b>")
+        report.append(f"<pre>{output['detailed_output']}</pre>")
 
+        return "\n".join(report)
 
 register_jobs(JunosInterfaceStatusJob)
