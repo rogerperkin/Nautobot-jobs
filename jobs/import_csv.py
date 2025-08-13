@@ -1,6 +1,6 @@
 from nautobot.extras.jobs import Job, FileVar, StringVar, BooleanVar, ObjectVar
-from nautobot.dcim.models import Device, DeviceType, DeviceRole, Site, Platform, Manufacturer, Interface
-from nautobot.extras.models import Status
+from nautobot.dcim.models import Device, DeviceType, Site, Platform, Manufacturer, Interface
+from nautobot.extras.models import Status, DeviceRole
 from django.core.exceptions import ValidationError
 import pandas as pd
 import io
