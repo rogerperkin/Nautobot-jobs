@@ -33,7 +33,8 @@ class JunosInterfaceStatusJob(Job):
         """Main job execution method."""
         
         # Validate device platform
-        if not device.platform or "junos" not in device.platform.slug.lower():
+        platform_name =getattr(device.platform, "name", "").lower() if device.platform else ""
+        if "junos" not in platform_name:
             self.logger.error(f"Device {device.name} is not a Junos device")
             return f"ERROR: Device {device.name} is not a Junos device"
         
