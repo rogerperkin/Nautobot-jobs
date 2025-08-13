@@ -76,8 +76,8 @@ class JunosInterfaceStatusJob(Job):
         device_connection = {
             'device_type': 'juniper_junos',
             'host': device_ip,
-            'username': 'your_username',  # Configure via environment variables or secrets
-            'password': 'your_password',  # Configure via environment variables or secrets
+            'username': 'admin',  # Configure via environment variables or secrets
+            'password': 'admin@123',  # Configure via environment variables or secrets
             'timeout': 30,
             'session_log': 'netmiko_session.log'  # Optional: for debugging
         }
