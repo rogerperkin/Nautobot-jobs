@@ -3,10 +3,7 @@ from nautobot.dcim.models import Device
 from nautobot.extras.models import Status
 from netmiko import ConnectHandler
 from nautobot.apps.jobs import register_jobs
-import logging
 import os
-
-logger = logging.getLogger(__name__)
 
 class JunosInterfaceStatusJob(Job):
     class Meta:
@@ -28,41 +25,34 @@ class JunosInterfaceStatusJob(Job):
     def run(self, device, interface_name):
         platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
         if "junos" not in platform_name:
-            self.logger.error(f"Device {device.name} is not a Junos device")
-            return self._error_block(f"Device {device.name} is not a Junos device")
+            self.log_failure(f"Device {device.name} is not a Junos device")
+            return
 
         active_status = Status.objects.get(name="Active")
         if device.status != active_status:
-            self.logger.error(f"Device {device.name} is not in Active status")
-            return self._error_block(f"Device {device.name} is not in Active status")
+            self.log_failure(f"Device {device.name} is not in Active status")
+            return
 
         if not (device.primary_ip4 or device.primary_ip6):
-            self.logger.error(f"Device {device.name} has no primary IP address")
-            return self._error_block(f"Device {device.name} has no primary IP address")
+            self.log_failure(f"Device {device.name} has no primary IP address")
+            return
 
         device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
 
         try:
             output = self._get_interface_status(device_ip, interface_name)
             if not output or not output.get("main_output"):
-                self.logger.warning(f"No output for interface {interface_name} on {device.name}")
-                return self._error_block(f"No output for interface {interface_name} on {device.name}")
+                self.log_warning(f"No output for interface {interface_name} on {device.name}")
+                return
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
 
-            # Log concise status
-            self.logger.info(
-                f"Interface {interface_name} on {device.name} "
-                f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
-            )
-
-            # Return plain text output
-            return self._format_plain_output(device.name, interface_name, admin, link, proto, output)
+            # Log the output cleanly
+            report = self._format_plain_output(device.name, interface_name, admin, link, proto, output)
+            self.log_info(report)
 
         except Exception as e:
-            error_msg = f"Error retrieving interface status: {str(e)}"
-            self.logger.error(error_msg)
-            return self._error_block(error_msg)
+            self.log_failure(f"Error retrieving interface status: {e}")
 
     def _get_interface_status(self, device_ip, interface_name):
         creds = {
@@ -98,24 +88,22 @@ class JunosInterfaceStatusJob(Job):
         return "unknown", "unknown", "unknown"
 
     def _format_plain_output(self, device_name, interface_name, admin, link, proto, output):
-        report = []
-        report.append("="*50)
-        report.append("INTERFACE STATUS REPORT")
-        report.append(f"Device: {device_name}")
-        report.append(f"Interface: {interface_name}")
-        report.append("="*50)
-        report.append(f"Admin Status:     {admin.upper()}")
-        report.append(f"Link Status:      {link.upper()}")
-        report.append(f"Protocol Status:  {proto.upper()}")
-        report.append("-"*50)
-        report.append(f"$ {output['terse_command']}")
-        report.append(output["main_output"])
-        report.append(f"$ {output['detailed_command']}")
-        report.append(output["detailed_output"])
-        report.append("="*50)
-        return "\n".join(report)
-
-    def _error_block(self, message):
-        return f"ERROR: {message}"
+        lines = [
+            "="*50,
+            "INTERFACE STATUS REPORT",
+            f"Device: {device_name}",
+            f"Interface: {interface_name}",
+            "="*50,
+            f"Admin Status:     {admin.upper()}",
+            f"Link Status:      {link.upper()}",
+            f"Protocol Status:  {proto.upper()}",
+            "-"*50,
+            f"$ {output['terse_command']}",
+            output["main_output"],
+            f"$ {output['detailed_command']}",
+            output["detailed_output"],
+            "="*50,
+        ]
+        return "\n".join(lines)
 
 register_jobs(JunosInterfaceStatusJob)
