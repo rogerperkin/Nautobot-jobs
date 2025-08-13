@@ -60,8 +60,6 @@ class JunosInterfaceStatusJob(Job):
             self.logger.info(
                 f"Interface {interface_name} on {device.name} "
                 f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
-            )
-            self.logger.debug(f"Full CLI output:\n{output['detailed_output']}")
 
             # Return a concise report for Nautobot
             return self._format_concise_output(device.name, interface_name, admin, link, proto, output)
@@ -107,11 +105,11 @@ class JunosInterfaceStatusJob(Job):
     def _status_color(self, value):
         v = value.lower()
         if v == "up":
-            return f"{ANSI_GREEN}{value.upper()} ✅{ANSI_RESET}"
+            return f"{ANSI_GREEN}{value.upper()} {ANSI_RESET}"
         elif v == "down":
-            return f"{ANSI_RED}{value.upper()} ❌{ANSI_RESET}"
+            return f"{ANSI_RED}{value.upper()} {ANSI_RESET}"
         else:
-            return f"{ANSI_YELLOW}{value.upper()} ❓{ANSI_RESET}"
+            return f"{ANSI_YELLOW}{value.upper()} {ANSI_RESET}"
 
     def _format_concise_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
@@ -120,9 +118,9 @@ class JunosInterfaceStatusJob(Job):
         report.append(f"Device: {device_name}")
         report.append(f"Interface: {interface_name}")
         report.append("=" * 50)
-        report.append(f"🔧 Admin Status:     {self._status_color(admin)}")
-        report.append(f"📡 Link Status:      {self._status_color(link)}")
-        report.append(f"🔄 Protocol Status:  {self._status_color(proto)}")
+        report.append(f" Admin Status:     {self._status_color(admin)}")
+        report.append(f" Link Status:      {self._status_color(link)}")
+        report.append(f" Protocol Status:  {self._status_color(proto)}")
         
         # Extract some key info from detailed output
         details = output.get("detailed_output", "")
