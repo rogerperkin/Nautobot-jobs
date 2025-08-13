@@ -56,13 +56,15 @@ class JunosInterfaceStatusJob(Job):
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
 
-            # This is the “log message” you liked — will appear above the result
+            # Log the full status
             self.logger.info(
                 f"Interface {interface_name} on {device.name} "
                 f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
             )
+            self.logger.debug(f"Full CLI output:\n{output['detailed_output']}")
 
-            return self._format_preformatted_output(device.name, interface_name, admin, link, proto, output)
+            # Return a concise report for Nautobot
+            return self._format_concise_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
             error_msg = f"Error retrieving interface status: {str(e)}"
@@ -111,25 +113,36 @@ class JunosInterfaceStatusJob(Job):
         else:
             return f"{ANSI_YELLOW}{value.upper()} ❓{ANSI_RESET}"
 
-    def _format_preformatted_output(self, device_name, interface_name, admin, link, proto, output):
+    def _format_concise_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
-        report.append("=" * 80)
+        report.append("=" * 50)
         report.append("INTERFACE STATUS REPORT")
         report.append(f"Device: {device_name}")
         report.append(f"Interface: {interface_name}")
-        report.append("=" * 80)
+        report.append("=" * 50)
         report.append(f"🔧 Admin Status:     {self._status_color(admin)}")
         report.append(f"📡 Link Status:      {self._status_color(link)}")
         report.append(f"🔄 Protocol Status:  {self._status_color(proto)}")
-        report.append("=" * 80)
-        report.append("RAW CLI OUTPUTS")
-        report.append("=" * 80)
-        report.append(f"$ {output['terse_command']}")
-        report.append(output["main_output"])
-        report.append("")
-        report.append(f"$ {output['detailed_command']}")
-        report.append(output["detailed_output"])
-        report.append("=" * 80)
+        
+        # Extract some key info from detailed output
+        details = output.get("detailed_output", "")
+        last_flapped = "Unknown"
+        active_alarms = "None"
+        active_defects = "None"
+        
+        for line in details.splitlines():
+            if "Last flapped" in line:
+                last_flapped = line.split(":", 1)[1].strip()
+            elif "Active alarms" in line:
+                active_alarms = line.split(":", 1)[1].strip()
+            elif "Active defects" in line:
+                active_defects = line.split(":", 1)[1].strip()
+        
+        report.append(f"⏱ Last Flapped:     {last_flapped}")
+        report.append(f"⚠ Active Alarms:    {active_alarms}")
+        report.append(f"❗ Active Defects:   {active_defects}")
+        report.append("=" * 50)
+        
         return f"<pre>{'\n'.join(report)}</pre>"
 
     def _error_block(self, message):
