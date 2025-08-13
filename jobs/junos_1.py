@@ -2,6 +2,7 @@ from nautobot.extras.jobs import Job, StringVar, ObjectVar
 from nautobot.dcim.models import Device
 from nautobot.extras.models import Status
 from netmiko import ConnectHandler
+from nautobot.apps.jobs import Job, register_jobs
 import logging
 
 logger = logging.getLogger(__name__)
@@ -218,5 +219,7 @@ class JunosInterfaceStatusJobWithEnvCreds(JunosInterfaceStatusJob):
                 'command': command
             }
 
-# Register both jobs
-jobs = [JunosInterfaceStatusJob, JunosInterfaceStatusJobWithEnvCreds]
+register_jobs(
+    JunosInterfaceStatusJob,
+    JunosInterfaceStatusJobWithEnvCreds
+)
