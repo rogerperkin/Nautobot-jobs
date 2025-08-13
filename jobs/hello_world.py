@@ -5,6 +5,6 @@ class HelloWorldJob(Job):
         name = "Hello World Job"
         description = "A simple test job that just says hello."
 
-    def run(self, data, commit):
+    def run(self):
         self.logger.info("Hello, Nautobot!")
         return "Hello, Nautobot! Job ran successfully."
