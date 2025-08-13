@@ -134,28 +134,6 @@ class VerifyHostnames(Job):
                 logger.warning("Hostname is not compliant.", extra={"obj": device})
 
 
-class VerifyPlatform(Job):
-    """Demo job that verifies that platform is defined for devices"""
-
-    class Meta:
-        """Meta class for VerifyPlatform"""
-
-        name = "Verify Platform"
-        description = "Verify a device has platform defined"
-
-    location = FormData.location
-    device_role = FormData.device_role
-    device_type = FormData.device_type
-
-    def run(self, location, device_role, device_type):
-        """Executes the job"""
-
-        for device in filter_devices(location, device_role, device_type):
-            if device.platform:
-                logger.info("Platform is defined.", extra={"obj": device})
-            else:
-                logger.warning("Platform is not defined.", extra={"obj": device})
-
 
 class VerifyPrimaryIP(Job):
     """Demo job that verifies that a primary IP is defined for devices."""
@@ -209,41 +187,9 @@ class VerifyHasRack(Job):
                 logger.info("Device is in rack (%s)", device.rack, extra={"obj": device})
 
 
-class VerifyCircuitTermination(Job):
-    """Demo job that verifies if each circuit has termination and an IP address"""
-
-    class Meta:
-        """Meta class for VerifyCircuitTermination"""
-
-        name = "Verify Circuit Termination"
-        description = "Verify a circuit has termination and an IP address"
-
-
-    def run(self):
-        """Executes the job"""
-
-        for circuit in Circuit.objects.all():
-            termination = circuit.termination_a
-            if not termination.path:
-                logger.warning("Circuit is not terminated", extra={"obj": circuit})
-                continue
-
-            interface = termination.path.destination.name
-            device = termination.path.destination.device.name
-            logger.info("Circuit terminated on %s:%s", device, interface, extra={"obj": circuit})
-
-            ip_addresses = termination.path.destination.ip_addresses.all()
-            if not ip_addresses:
-                logger.warning("IP address is not assigned", extra={"obj": circuit})
-                continue
-            first = str(ip_addresses.first().address)
-            logger.info("IP address is assigned (%s)", first, extra={"obj": circuit})
-
 register_jobs(
     VerifyHostnames,
-    VerifyPlatform,
     VerifyPrimaryIP,
     VerifyHasRack,
-    VerifyCircuitTermination,
     VerifyManagementIP
 )

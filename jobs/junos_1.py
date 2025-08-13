@@ -26,17 +26,6 @@ class JunosInterfaceStatusJob(Job):
         required=True,
         description="Interface name (e.g., ge-0/0/1, xe-0/0/0, et-0/0/0)"
     )
-    
-    show_detail = StringVar(
-        choices=[
-            ("brief", "Brief status"),
-            ("detail", "Detailed status"),
-            ("extensive", "Extensive status with statistics"),
-        ],
-        default="detail",
-        required=True,
-        description="Level of detail to show"
-    )
 
     def run(self):
         """Main job execution method."""
@@ -114,16 +103,7 @@ class JunosInterfaceStatusJob(Job):
     def _generate_show_command(self):
         """Generate the appropriate show interfaces command based on detail level."""
         
-        base_command = f"show interfaces {self.interface_name}"
-        
-        if self.show_detail == "brief":
-            return f"{base_command} terse"
-        elif self.show_detail == "detail":
-            return base_command
-        elif self.show_detail == "extensive":
-            return f"{base_command} extensive"
-        
-        return base_command
+        return: f"sho interfaces {self.interface_name} terse" 
     
     def _format_output(self, output_dict):
         """Format the command output for better readability."""
