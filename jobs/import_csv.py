@@ -1,5 +1,5 @@
 from nautobot.extras.jobs import Job, FileVar, StringVar, BooleanVar, ObjectVar
-from nautobot.dcim.models import Device, DeviceType, Site, Platform, Manufacturer, Interface
+from nautobot.dcim.models import Device, DeviceType, Location, Platform, Manufacturer, Interface
 from nautobot.extras.models import Status, DeviceRole
 from django.core.exceptions import ValidationError
 import pandas as pd
@@ -43,9 +43,9 @@ class SpreadsheetImportJob(Job):
         description="Optional: Column name containing device types"
     )
     
-    site_column = StringVar(
+    location_column = StringVar(
         required=False,
-        description="Optional: Column name containing site names"
+        description="Optional: Column name containing location names"
     )
     
     # Default values for required fields
@@ -61,10 +61,10 @@ class SpreadsheetImportJob(Job):
         description="Default device role for all devices"
     )
     
-    default_site = ObjectVar(
-        model=Site,
+    default_location = ObjectVar(
+        model=location,
         required=True,
-        description="Default site for devices without specific site"
+        description="Default location for devices without specific location"
     )
     
     default_platform = ObjectVar(
@@ -184,8 +184,8 @@ class SpreadsheetImportJob(Job):
         if self.device_type_column and self.device_type_column in df_clean.columns:
             string_columns.append(self.device_type_column)
         
-        if self.site_column and self.site_column in df_clean.columns:
-            string_columns.append(self.site_column)
+        if self.location_column and self.location_column in df_clean.columns:
+            string_columns.append(self.location_column)
         
         for col in string_columns:
             if col in df_clean.columns:
@@ -270,22 +270,22 @@ class SpreadsheetImportJob(Job):
                 except DeviceType.DoesNotExist:
                     self.logger.warning(f"Device type {device_row[self.device_type_column]} not found, using default")
             
-            # Determine site
-            site = self.default_site
-            if (self.site_column and 
-                self.site_column in device_row and 
-                pd.notna(device_row[self.site_column])):
+            # Determine location
+            location = self.default_location
+            if (self.location_column and 
+                self.location_column in device_row and 
+                pd.notna(device_row[self.location_column])):
                 try:
-                    site = Site.objects.get(name=device_row[self.site_column])
-                except Site.DoesNotExist:
-                    self.logger.warning(f"Site {device_row[self.site_column]} not found, using default")
+                    location = location.objects.get(name=device_row[self.location_column])
+                except location.DoesNotExist:
+                    self.logger.warning(f"location {device_row[self.location_column]} not found, using default")
             
             # Create device
             device = Device(
                 name=device_name,
                 device_type=device_type,
                 device_role=self.default_device_role,
-                site=site,
+                location=location,
                 status=active_status
             )
             
