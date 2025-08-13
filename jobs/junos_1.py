@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class JunosInterfaceStatusJob(Job):
     class Meta:
         name = "Show Junos Interface Status"
-        description = "Display interface status for a Junos device"
+        description = "Display interface status for a Junos device (HTML formatted)"
         has_sensitive_variables = False
 
     device = ObjectVar(
@@ -28,42 +28,28 @@ class JunosInterfaceStatusJob(Job):
     def run(self, device, interface_name):
         platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
         if "junos" not in platform_name:
-            self.logger.error(f"Device {device.name} is not a Junos device")
-            return f"ERROR: Device {device.name} is not a Junos device"
+            return self._error_html(f"Device <b>{device.name}</b> is not a Junos device")
 
         active_status = Status.objects.get(name="Active")
         if device.status != active_status:
-            self.logger.error(f"Device {device.name} is not in Active status")
-            return f"ERROR: Device {device.name} is not in Active status"
+            return self._error_html(f"Device <b>{device.name}</b> is not in Active status")
 
         if not (device.primary_ip4 or device.primary_ip6):
-            self.logger.error(f"Device {device.name} has no primary IP address")
-            return f"ERROR: Device {device.name} has no primary IP address"
+            return self._error_html(f"Device <b>{device.name}</b> has no primary IP address")
 
         device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
 
         try:
             output = self._get_interface_status(device_ip, interface_name)
-
             if not output or not output.get("main_output"):
-                return f"No output received for interface {interface_name} on {device.name}"
+                return self._error_html(f"No output received for interface {interface_name} on {device.name}")
 
-            # Parse terse output for status summary
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
 
-            # Add summary log
-            self.logger.info(
-                f"Interface {interface_name} on {device.name} is {link.upper()} "
-                f"(Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
-            )
-
-            # Format final output with both summary and CLI outputs
-            return self._format_output(device.name, interface_name, admin, link, proto, output)
+            return self._format_html_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
-            error_msg = f"Error retrieving interface status: {str(e)}"
-            self.logger.error(error_msg)
-            return f"ERROR: {error_msg}"
+            return self._error_html(f"Error retrieving interface status: {str(e)}")
 
     def _get_interface_status(self, device_ip, interface_name):
         creds = {
@@ -76,8 +62,6 @@ class JunosInterfaceStatusJob(Job):
 
         terse_command = f"show interfaces {interface_name} terse"
         detailed_command = f"show interfaces {interface_name}"
-
-        self.logger.info(f"Executing command: {terse_command}")
 
         with ConnectHandler(**creds) as net_connect:
             main_output = net_connect.send_command(terse_command)
@@ -100,37 +84,31 @@ class JunosInterfaceStatusJob(Job):
                 return admin, link, proto
         return "unknown", "unknown", "unknown"
 
-    def _format_output(self, device_name, interface_name, admin, link, proto, output):
-        def status_icon(value):
-            if value.lower() == "up":
-                return "✅"
-            elif value.lower() == "down":
-                return "❌"
-            else:
-                return "❓"
+    def _format_html_output(self, device_name, interface_name, admin, link, proto, output):
+        def status_label(value):
+            color_map = {"up": "green", "down": "red", "unknown": "gray"}
+            icon_map = {"up": "✅", "down": "❌", "unknown": "❓"}
+            val = value.lower()
+            color = color_map.get(val, "gray")
+            icon = icon_map.get(val, "❓")
+            return f'<span style="color:{color}; font-weight:bold;">{value.upper()} {icon}</span>'
 
-        result = []
-        result.append("=" * 80)
-        result.append("INTERFACE STATUS REPORT")
-        result.append(f"Device: {device_name}")
-        result.append(f"Interface: {interface_name}")
-        result.append("=" * 80)
-        result.append("")
-        result.append(f"🔧 Admin Status:     {admin.upper()} {status_icon(admin)}")
-        result.append(f"📡 Link Status:      {link.upper()} {status_icon(link)}")
-        result.append(f"🔄 Protocol Status:  {proto.upper()} {status_icon(proto)}")
-        result.append("")
-        result.append("=" * 80)
-        result.append("RAW CLI OUTPUTS")
-        result.append("=" * 80)
-        result.append(f"$ {output['terse_command']}")
-        result.append(output["main_output"])
-        result.append("")
-        result.append(f"$ {output['detailed_command']}")
-        result.append(output["detailed_output"])
-        result.append("=" * 80)
+        html = []
+        html.append("<h2>Interface Status Report</h2>")
+        html.append(f"<b>Device:</b> {device_name}<br>")
+        html.append(f"<b>Interface:</b> {interface_name}<br><br>")
+        html.append(f"🔧 <b>Admin Status:</b> {status_label(admin)}<br>")
+        html.append(f"📡 <b>Link Status:</b> {status_label(link)}<br>")
+        html.append(f"🔄 <b>Protocol Status:</b> {status_label(proto)}<br><br>")
+        html.append("<h3>Raw CLI Outputs</h3>")
+        html.append(f"<b>$ {output['terse_command']}</b>")
+        html.append(f"<pre>{output['main_output']}</pre>")
+        html.append(f"<b>$ {output['detailed_command']}</b>")
+        html.append(f"<pre>{output['detailed_output']}</pre>")
+        return "\n".join(html)
 
-        return "\n".join(result)
+    def _error_html(self, message):
+        return f'<span style="color:red; font-weight:bold;">ERROR:</span> {message}'
 
 
 register_jobs(JunosInterfaceStatusJob)
