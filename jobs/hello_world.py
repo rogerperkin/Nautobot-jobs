@@ -1,4 +1,4 @@
-from nautobot.extras.jobs import Job
+from nautobot.apps.jobs import Job, register_jobs
 
 class HelloWorldJob(Job):
     class Meta:
@@ -8,3 +8,7 @@ class HelloWorldJob(Job):
     def run(self):
         self.logger.info("Hello, Nautobot!")
         return "Hello, Nautobot! Job ran successfully."
+    
+register_jobs(
+    HelloWorldJob,
+)
