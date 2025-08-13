@@ -8,7 +8,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# ANSI Colors for Nautobot terminal-style output
+# ANSI Colors for Nautobot output
 ANSI_GREEN = "\033[92m"
 ANSI_RED = "\033[91m"
 ANSI_YELLOW = "\033[93m"
@@ -17,7 +17,7 @@ ANSI_RESET = "\033[0m"
 class JunosInterfaceStatusJob(Job):
     class Meta:
         name = "Show Junos Interface Status"
-        description = "Display interface status for a Junos device (readable + colored)"
+        description = "Display interface status for a Junos device (colored + readable)"
         has_sensitive_variables = False
 
     device = ObjectVar(
@@ -34,16 +34,16 @@ class JunosInterfaceStatusJob(Job):
     def run(self, device, interface_name):
         platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
         if "junos" not in platform_name:
-            self.log_failure(f"Device {device.name} is not a Junos device")
+            self.logger.error(f"Device {device.name} is not a Junos device")
             return self._error_block(f"Device {device.name} is not a Junos device")
 
         active_status = Status.objects.get(name="Active")
         if device.status != active_status:
-            self.log_failure(f"Device {device.name} is not in Active status")
+            self.logger.error(f"Device {device.name} is not in Active status")
             return self._error_block(f"Device {device.name} is not in Active status")
 
         if not (device.primary_ip4 or device.primary_ip6):
-            self.log_failure(f"Device {device.name} has no primary IP address")
+            self.logger.error(f"Device {device.name} has no primary IP address")
             return self._error_block(f"Device {device.name} has no primary IP address")
 
         device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
@@ -51,13 +51,13 @@ class JunosInterfaceStatusJob(Job):
         try:
             output = self._get_interface_status(device_ip, interface_name)
             if not output or not output.get("main_output"):
-                self.log_warning(f"No output for interface {interface_name} on {device.name}")
+                self.logger.warning(f"No output for interface {interface_name} on {device.name}")
                 return self._error_block(f"No output for interface {interface_name} on {device.name}")
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
 
-            # Keep the log entry you liked
-            self.log_info(
+            # This is the “log message” you liked — will appear above the result
+            self.logger.info(
                 f"Interface {interface_name} on {device.name} "
                 f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
             )
@@ -66,7 +66,7 @@ class JunosInterfaceStatusJob(Job):
 
         except Exception as e:
             error_msg = f"Error retrieving interface status: {str(e)}"
-            self.log_failure(error_msg)
+            self.logger.error(error_msg)
             return self._error_block(error_msg)
 
     def _get_interface_status(self, device_ip, interface_name):
