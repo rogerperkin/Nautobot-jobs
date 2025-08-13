@@ -28,4 +28,3 @@ class ShutInterface(Job):
             self.logger.info(f"Interface {interface.name} on {device.name} is already shut down.")
             return f"Interface {interface.name} is already disabled."
 
-jobs = [ShutInterface]
