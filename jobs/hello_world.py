@@ -1,5 +1,7 @@
 from nautobot.apps.jobs import Job, register_jobs
 
+name = "Hello World Jobs"
+
 class HelloWorldJob(Job):
     class Meta:
         name = "Hello World Job"
