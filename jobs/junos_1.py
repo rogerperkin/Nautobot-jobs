@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class JunosInterfaceStatusJob(Job):
     class Meta:
         name = "Show Junos Interface Status"
-        description = "Display interface status for a Junos device (clean + readable)"
+        description = "Display interface status for a Junos device (plain text)"
         has_sensitive_variables = False
 
     device = ObjectVar(
@@ -56,8 +56,8 @@ class JunosInterfaceStatusJob(Job):
                 f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
             )
 
-            # Return clean HTML output
-            return self._format_clean_output(device.name, interface_name, admin, link, proto, output)
+            # Return plain text output
+            return self._format_plain_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
             error_msg = f"Error retrieving interface status: {str(e)}"
@@ -97,27 +97,25 @@ class JunosInterfaceStatusJob(Job):
                 return admin, link, proto
         return "unknown", "unknown", "unknown"
 
-    def _format_clean_output(self, device_name, interface_name, admin, link, proto, output):
+    def _format_plain_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
-
-        report.append(f"<h2>Interface Status Report</h2>")
-        report.append(f"<b>Device:</b> {device_name}<br>")
-        report.append(f"<b>Interface:</b> {interface_name}<br><br>")
-        
-        report.append(f"<b>Admin Status:</b> {admin.upper()}<br>")
-        report.append(f"<b>Link Status:</b> {link.upper()}<br>")
-        report.append(f"<b>Protocol Status:</b> {proto.upper()}<br><br>")
-        
-        report.append("<h3>Raw CLI Outputs</h3>")
-        report.append(f"<b>$ {output['terse_command']}</b>")
-        report.append(f"<pre>{output['main_output']}</pre>")
-        report.append(f"<b>$ {output['detailed_command']}</b>")
-        report.append(f"<pre>{output['detailed_output']}</pre>")
-
+        report.append("="*50)
+        report.append("INTERFACE STATUS REPORT")
+        report.append(f"Device: {device_name}")
+        report.append(f"Interface: {interface_name}")
+        report.append("="*50)
+        report.append(f"Admin Status:     {admin.upper()}")
+        report.append(f"Link Status:      {link.upper()}")
+        report.append(f"Protocol Status:  {proto.upper()}")
+        report.append("-"*50)
+        report.append(f"$ {output['terse_command']}")
+        report.append(output["main_output"])
+        report.append(f"$ {output['detailed_command']}")
+        report.append(output["detailed_output"])
+        report.append("="*50)
         return "\n".join(report)
 
     def _error_block(self, message):
-        """Return a clean error message for Nautobot output."""
-        return f"<b>ERROR:</b> {message}"
+        return f"ERROR: {message}"
 
 register_jobs(JunosInterfaceStatusJob)
