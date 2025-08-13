@@ -8,16 +8,10 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# ANSI Colors for Nautobot output
-ANSI_GREEN = "\033[92m"
-ANSI_RED = "\033[91m"
-ANSI_YELLOW = "\033[93m"
-ANSI_RESET = "\033[0m"
-
 class JunosInterfaceStatusJob(Job):
     class Meta:
         name = "Show Junos Interface Status"
-        description = "Display interface status for a Junos device (colored + readable)"
+        description = "Display interface status for a Junos device (clean + readable)"
         has_sensitive_variables = False
 
     device = ObjectVar(
@@ -56,13 +50,14 @@ class JunosInterfaceStatusJob(Job):
 
             admin, link, proto = self._parse_status_from_terse(output["main_output"], interface_name)
 
-            # Log the full status
+            # Log concise status
             self.logger.info(
                 f"Interface {interface_name} on {device.name} "
-                f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})")
+                f"is {link.upper()} (Admin: {admin.upper()}, Link: {link.upper()}, Proto: {proto.upper()})"
+            )
 
-            # Return a concise report for Nautobot
-            return self._format_concise_output(device.name, interface_name, admin, link, proto, output)
+            # Return clean HTML output
+            return self._format_clean_output(device.name, interface_name, admin, link, proto, output)
 
         except Exception as e:
             error_msg = f"Error retrieving interface status: {str(e)}"
@@ -102,15 +97,6 @@ class JunosInterfaceStatusJob(Job):
                 return admin, link, proto
         return "unknown", "unknown", "unknown"
 
-    def _status_color(self, value):
-        v = value.lower()
-        if v == "up":
-            return f"{ANSI_GREEN}{value.upper()} {ANSI_RESET}"
-        elif v == "down":
-            return f"{ANSI_RED}{value.upper()} {ANSI_RESET}"
-        else:
-            return f"{ANSI_YELLOW}{value.upper()} {ANSI_RESET}"
-
     def _format_clean_output(self, device_name, interface_name, admin, link, proto, output):
         report = []
 
@@ -129,5 +115,9 @@ class JunosInterfaceStatusJob(Job):
         report.append(f"<pre>{output['detailed_output']}</pre>")
 
         return "\n".join(report)
+
+    def _error_block(self, message):
+        """Return a clean error message for Nautobot output."""
+        return f"<b>ERROR:</b> {message}"
 
 register_jobs(JunosInterfaceStatusJob)
