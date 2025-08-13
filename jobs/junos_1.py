@@ -97,7 +97,7 @@ class JunosInterfaceStatusJob(Job):
                 return admin, link, proto
         return "unknown", "unknown", "unknown"
 
-    def _format_output(self, device_name, interface_name, output_dict, admin, link, proto):
+    def _format_output(self, device_name, interface_name, admin, link, proto):
         def status_icon(value):
             if value.lower() == "up":
                 return "✅"
@@ -111,31 +111,16 @@ class JunosInterfaceStatusJob(Job):
         result.append("INTERFACE STATUS REPORT")
         result.append(f"Device: {device_name}")
         result.append(f"Interface: {interface_name}")
-        result.append(f"Command Executed: {output_dict['command']}")
         result.append("=" * 80)
         result.append("")
-
-        result.append("SUMMARY:")
-        result.append("-" * 40)
-        result.append(f"{status_icon(admin)} Admin Status:     {admin.upper()}")
-        result.append(f"{status_icon(link)} Link Status:      {link.upper()}")
-        result.append(f"{status_icon(proto)} Protocol Status:  {proto.upper()}")
+        result.append(f"🔧 Admin Status:     {admin.upper()} {status_icon(admin)}")
+        result.append(f"📡 Link Status:      {link.upper()} {status_icon(link)}")
+        result.append(f"🔄 Protocol Status:  {proto.upper()} {status_icon(proto)}")
         result.append("")
-
-        # Optionally keep raw output if you want
-        result.append("RAW INTERFACE STATUS OUTPUT:")
-        result.append("-" * 40)
-        result.append(output_dict["main_output"])
-        result.append("")
-
-        result.append("RAW ADDITIONAL INTERFACE INFORMATION:")
-        result.append("-" * 40)
-        result.append(output_dict["detailed_output"])
-        result.append("")
-
         result.append("=" * 80)
 
         return "\n".join(result)
+
 
 
 
