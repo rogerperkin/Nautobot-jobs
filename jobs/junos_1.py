@@ -103,7 +103,7 @@ class JunosInterfaceStatusJob(Job):
     def _generate_show_command(self):
         """Generate the appropriate show interfaces command based on detail level."""
         
-        return: f"sho interfaces {self.interface_name} terse" 
+        return f"sho interfaces {self.interface_name} terse" 
     
     def _format_output(self, output_dict):
         """Format the command output for better readability."""
