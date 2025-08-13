@@ -28,27 +28,28 @@ class JunosInterfaceStatusJob(Job):
         description="Interface name (e.g., ge-0/0/1, xe-0/0/0, et-0/0/0)"
     )
 
-    def run(self):
+    def run(self, device, interface_name, show_detail):
+
         """Main job execution method."""
         
         # Validate device platform
-        if not self.device.platform or "junos" not in self.device.platform.slug.lower():
-            self.logger.error(f"Device {self.device.name} is not a Junos device")
-            return f"ERROR: Device {self.device.name} is not a Junos device"
+        if not device.platform or "junos" not in device.platform.slug.lower():
+            self.logger.error(f"Device {device.name} is not a Junos device")
+            return f"ERROR: Device {device.name} is not a Junos device"
         
         # Check if device is reachable/active
         active_status = Status.objects.get(name="Active")
         if self.device.status != active_status:
-            self.logger.error(f"Device {self.device.name} is not in Active status")
-            return f"ERROR: Device {self.device.name} is not in Active status"
+            self.logger.error(f"Device {device.name} is not in Active status")
+            return f"ERROR: Device {device.name} is not in Active status"
         
         # Check if device has primary IP
-        if not (self.device.primary_ip4 or self.device.primary_ip6):
-            self.logger.error(f"Device {self.device.name} has no primary IP address configured")
-            return f"ERROR: Device {self.device.name} has no primary IP address configured"
+        if not (self.device.primary_ip4 or device.primary_ip6):
+            self.logger.error(f"Device {device.name} has no primary IP address configured")
+            return f"ERROR: Device {device.name} has no primary IP address configured"
         
         # Get device IP
-        device_ip = str(self.device.primary_ip4 or self.device.primary_ip6).split('/')[0]
+        device_ip = str(device.primary_ip4 or device.primary_ip6).split('/')[0]
         
         try:
             # Connect to device and get interface status
