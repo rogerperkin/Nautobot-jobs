@@ -1,5 +1,7 @@
 from nautobot.core.celery import register_jobs
-from .shut_interface import ShutInterface
+from .shutdown_interface import JunosDisableInterface
+from .hello_world import HelloWorldJob
 
-register_jobs(ShutInterface)
+register_jobs(JunosDisableInterface, HelloWorldJob)
+
 
