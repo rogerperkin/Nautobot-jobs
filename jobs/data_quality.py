@@ -4,7 +4,7 @@ from nautobot.circuits.models import Circuit
 from nautobot.dcim.models import Device, DeviceType, Location
 from nautobot.extras.jobs import get_task_logger, Job, StringVar, MultiObjectVar
 from nautobot.extras.models import Role
-from nautobot.extras.jobs import register_jobs
+from nautobot.apps.jobs import Job, register_jobs
 
 logger = get_task_logger(__name__)
 
