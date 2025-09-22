@@ -88,12 +88,21 @@ class VerifyManagementIP(Job):
 
     def run(self, location, device_role, device_type):
         devices = filter_devices(location, device_role, device_type)
+        missing_mgmt_ip = []
 
         for device in devices:
             if device.primary_ip:
-                logger.info("Management IP is defined: %s", device.primary_ip, extra={"obj": device})
+                logger.info("✅ [%s] Management IP is defined: %s", device.name, device.primary_ip, extra={"obj": device})
             else:
-                logger.warning("Management IP is NOT defined on device: %s", device.name, extra={"obj": device})
+                logger.warning("❌ [%s] Management IP is NOT defined", device.name, extra={"obj": device})
+                missing_mgmt_ip.append(device.name)
+
+        if missing_mgmt_ip:
+            logger.warning("Summary: %d devices missing management IP:\n%s",
+                           len(missing_mgmt_ip),
+                           "\n".join(missing_mgmt_ip))
+        else:
+            logger.info("✅ All devices have management IPs defined.")
 
 
 class VerifyHostnames(Job):
@@ -115,12 +124,22 @@ class VerifyHostnames(Job):
 
     def run(self, location, device_role, device_type, hostname_regex):
         logger.info("Using the regular expression: %s", hostname_regex)
+        devices = filter_devices(location, device_role, device_type)
+        non_compliant = []
 
-        for device in filter_devices(location, device_role, device_type):
+        for device in devices:
             if re.search(hostname_regex, device.name):
-                logger.info("Hostname is compliant.", extra={"obj": device})
+                logger.info("✅ [%s] Hostname is compliant.", device.name, extra={"obj": device})
             else:
-                logger.warning("Hostname is NOT compliant: %s", device.name, extra={"obj": device})
+                logger.warning("❌ [%s] Hostname is NOT compliant.", device.name, extra={"obj": device})
+                non_compliant.append(device.name)
+
+        if non_compliant:
+            logger.warning("Summary: %d devices have non-compliant hostnames:\n%s",
+                           len(non_compliant),
+                           "\n".join(non_compliant))
+        else:
+            logger.info("✅ All hostnames are compliant.")
 
 
 class VerifyPrimaryIP(Job):
@@ -135,16 +154,26 @@ class VerifyPrimaryIP(Job):
     device_type = FormData.device_type
 
     def run(self, location, device_role, device_type):
-        for device in filter_devices(location, device_role, device_type):
+        devices = filter_devices(location, device_role, device_type)
+        missing_primary_ip = []
 
+        for device in devices:
             # Skip if part of a virtual chassis and not master
             if device.virtual_chassis and device.virtual_chassis.master_id != device.id:
                 continue
 
             if device.primary_ip:
-                logger.info("Primary IP is defined (%s)", device.primary_ip, extra={"obj": device})
+                logger.info("✅ [%s] Primary IP is defined: %s", device.name, device.primary_ip, extra={"obj": device})
             else:
-                logger.warning("No primary IP is defined on device: %s", device.name, extra={"obj": device})
+                logger.warning("❌ [%s] No primary IP is defined", device.name, extra={"obj": device})
+                missing_primary_ip.append(device.name)
+
+        if missing_primary_ip:
+            logger.warning("Summary: %d devices missing primary IP:\n%s",
+                           len(missing_primary_ip),
+                           "\n".join(missing_primary_ip))
+        else:
+            logger.info("✅ All applicable devices have primary IPs defined.")
 
 
 class VerifyHasRack(Job):
@@ -159,11 +188,22 @@ class VerifyHasRack(Job):
     device_type = FormData.device_type
 
     def run(self, location, device_role, device_type):
-        for device in filter_devices(location, device_role, device_type):
+        devices = filter_devices(location, device_role, device_type)
+        not_racked = []
+
+        for device in devices:
             if device.rack:
-                logger.info("Device is in rack: %s", device.rack, extra={"obj": device})
+                logger.info("✅ [%s] Device is in rack: %s", device.name, device.rack, extra={"obj": device})
             else:
-                logger.warning("Device is NOT in a rack: %s", device.name, extra={"obj": device})
+                logger.warning("❌ [%s] Device is NOT in a rack", device.name, extra={"obj": device})
+                not_racked.append(device.name)
+
+        if not_racked:
+            logger.warning("Summary: %d devices not in a rack:\n%s",
+                           len(not_racked),
+                           "\n".join(not_racked))
+        else:
+            logger.info("✅ All devices are installed in racks.")
 
 
 # -------------------------
