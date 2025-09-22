@@ -94,7 +94,7 @@ class VerifyManagementIP(Job):
             if device.primary_ip:
                 logger.info("✅ [%s] Management IP is defined: %s", device.name, device.primary_ip, extra={"obj": device})
             else:
-                logger.warning("❌ [%s] Management IP is NOT defined", device.name, extra={"obj": device})
+                logger.warning(" [%s] Management IP is NOT defined", device.name, extra={"obj": device})
                 missing_mgmt_ip.append(device.name)
 
         if missing_mgmt_ip:
@@ -131,7 +131,7 @@ class VerifyHostnames(Job):
             if re.search(hostname_regex, device.name):
                 logger.info("✅ [%s] Hostname is compliant.", device.name, extra={"obj": device})
             else:
-                logger.warning("❌ [%s] Hostname is NOT compliant.", device.name, extra={"obj": device})
+                logger.warning(" [%s] Hostname is NOT compliant.", device.name, extra={"obj": device})
                 non_compliant.append(device.name)
 
         if non_compliant:
@@ -165,7 +165,7 @@ class VerifyPrimaryIP(Job):
             if device.primary_ip:
                 logger.info("✅ [%s] Primary IP is defined: %s", device.name, device.primary_ip, extra={"obj": device})
             else:
-                logger.warning("❌ [%s] No primary IP is defined", device.name, extra={"obj": device})
+                logger.warning(" [%s] No primary IP is defined", device.name, extra={"obj": device})
                 missing_primary_ip.append(device.name)
 
         if missing_primary_ip:
@@ -195,7 +195,7 @@ class VerifyHasRack(Job):
             if device.rack:
                 logger.info("✅ [%s] Device is in rack: %s", device.name, device.rack, extra={"obj": device})
             else:
-                logger.warning("❌ [%s] Device is NOT in a rack", device.name, extra={"obj": device})
+                logger.warning(" [%s] Device is NOT in a rack", device.name, extra={"obj": device})
                 not_racked.append(device.name)
 
         if not_racked:
