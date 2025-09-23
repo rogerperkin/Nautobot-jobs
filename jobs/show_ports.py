@@ -1,5 +1,5 @@
 from nautobot.extras.jobs import Job, ObjectVar, ChoiceVar
-from dcim.models import Device
+from nautobot.dcim.models import Device
 from netmiko import ConnectHandler
 import json
 
