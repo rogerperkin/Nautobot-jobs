@@ -1,6 +1,7 @@
 from nautobot.extras.jobs import Job, ObjectVar, ChoiceVar
 from nautobot.dcim.models import Device
 from netmiko import ConnectHandler
+from nautobot.apps.jobs import Job, register_jobs
 import json
 
 class NokiaInterfaceSelector(Job):
