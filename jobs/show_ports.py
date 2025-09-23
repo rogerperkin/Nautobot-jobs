@@ -90,3 +90,10 @@ class NokiaInterfaceSelector(Job):
         self.log_success(f"Selected interface {selected_interface} on device {device.name}")
         # Optional: Push config here to admin-up the port
 
+# -------------------------
+# Register All Jobs
+# -------------------------
+register_jobs(
+    NokiaInterfaceSelector
+)
+
