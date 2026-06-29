@@ -33,9 +33,8 @@ class ShowJunosInterfaceStatus(JobButtonReceiver):
         #
         # Validate status
         #
-        if device.status.slug != "active":
-            raise ValueError(f"{device.name} is not Active.")
-
+        if device.status.name.lower() != "active":
+            raise ValueError(f"{device.name} is not Active (Status: {device.status.name})")
         #
         # Validate IP
         #
