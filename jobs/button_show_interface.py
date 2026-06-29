@@ -1,4 +1,4 @@
-from nautobot.apps.jobs import ButtonReceiver, register_jobs
+from nautobot.extra.jobs import ButtonReceiver, register_jobs
 from nautobot.dcim.models import Device
 from nautobot.extras.models import Status
 from netmiko import ConnectHandler
