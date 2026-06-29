@@ -1,4 +1,3 @@
-```python
 from nautobot.apps.jobs import Job
 from netmiko import ConnectHandler
 import os
