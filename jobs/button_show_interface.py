@@ -1,4 +1,4 @@
-from nautobot.extras.jobs import ButtonReceiver, register_jobs
+from nautobot.extras.jobs import JobButtonReceiver, register_jobs
 from nautobot.dcim.models import Device
 from nautobot.extras.models import Status
 from netmiko import ConnectHandler
@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class JunosInterfaceStatusButton(ButtonReceiver):
+class JunosInterfaceStatusButton(JobButtonReceiver):
     class Meta:
         name = "Show Junos Interface Status"
         description = "Display interface status for a Junos device"
