@@ -1,0 +1,132 @@
+from nautobot.apps.jobs import ButtonReceiver, register_jobs
+from nautobot.dcim.models import Device
+from nautobot.extras.models import Status
+from netmiko import ConnectHandler
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class JunosInterfaceStatusButton(ButtonReceiver):
+    class Meta:
+        name = "Show Junos Interface Status"
+        description = "Display interface status for a Junos device"
+        # Attach button to Device detail page
+        model = Device
+
+    def receive_job_button(self, obj, request, **kwargs):
+        """
+        obj = the Device instance the button was clicked on
+        request = Django request (can access user if needed)
+        """
+
+        device = obj
+
+        # Get interface from query param (?interface_name=ge-0/0/0)
+        interface_name = request.GET.get("interface_name", "ge-0/0/0")
+
+        platform_name = getattr(device.platform, "name", "").lower() if device.platform else ""
+        if "junos" not in platform_name:
+            msg = f"Device {device.name} is not a Junos device"
+            logger.error(msg)
+            return f"ERROR: {msg}"
+
+        try:
+            active_status = Status.objects.get(name="Active")
+        except Status.DoesNotExist:
+            return "ERROR: Active status not found"
+
+        if device.status != active_status:
+            msg = f"Device {device.name} is not in Active status"
+            logger.error(msg)
+            return f"ERROR: {msg}"
+
+        if not (device.primary_ip4 or device.primary_ip6):
+            msg = f"Device {device.name} has no primary IP address"
+            logger.error(msg)
+            return f"ERROR: {msg}"
+
+        device_ip = str(device.primary_ip4 or device.primary_ip6).split("/")[0]
+
+        try:
+            output = self._get_interface_status(device_ip, interface_name)
+
+            if not output or not output.get("main_output"):
+                msg = f"No output for interface {interface_name} on {device.name}"
+                logger.warning(msg)
+                return f"WARNING: {msg}"
+
+            admin, link, proto = self._parse_status_from_terse(
+                output["main_output"], interface_name
+            )
+
+            logger.info(
+                f"Interface {interface_name} on {device.name}: "
+                f"Admin={admin}, Link={link}, Proto={proto}"
+            )
+
+            return self._format_plain_output(
+                device.name, interface_name, admin, link, proto, output
+            )
+
+        except Exception as e:
+            msg = f"Error retrieving interface status: {e}"
+            logger.error(msg)
+            return f"ERROR: {msg}"
+
+    def _get_interface_status(self, device_ip, interface_name):
+        creds = {
+            "device_type": "juniper_junos",
+            "host": device_ip,
+            "username": os.getenv("JUNOS_USERNAME", "admin"),
+            "password": os.getenv("JUNOS_PASSWORD", "admin@123"),
+            "timeout": 30,
+        }
+
+        terse_command = f"show interfaces {interface_name} terse"
+        detailed_command = f"show interfaces {interface_name}"
+
+        with ConnectHandler(**creds) as net_connect:
+            main_output = net_connect.send_command(terse_command)
+            detailed_output = net_connect.send_command(detailed_command)
+
+        return {
+            "main_output": main_output,
+            "detailed_output": detailed_output,
+            "terse_command": terse_command,
+            "detailed_command": detailed_command,
+        }
+
+    def _parse_status_from_terse(self, output, iface):
+        for line in output.strip().splitlines():
+            if line.split()[0].startswith(iface):
+                parts = line.split()
+                admin = parts[1] if len(parts) > 1 else "unknown"
+                link = parts[2] if len(parts) > 2 else "unknown"
+                proto = parts[3] if len(parts) > 3 else "unknown"
+                return admin, link, proto
+        return "unknown", "unknown", "unknown"
+
+    def _format_plain_output(
+        self, device_name, interface_name, admin, link, proto, output
+    ):
+        report_lines = []
+        report_lines.append("=" * 50)
+        report_lines.append("INTERFACE STATUS REPORT")
+        report_lines.append(f"Device: {device_name}")
+        report_lines.append(f"Interface: {interface_name}")
+        report_lines.append("=" * 50)
+        report_lines.append(f"Admin Status:     {admin.upper()}")
+        report_lines.append(f"Link Status:      {link.upper()}")
+        report_lines.append(f"Protocol Status:  {proto.upper()}")
+        report_lines.append("\nRaw CLI Outputs:\n")
+        report_lines.append(f"$ {output['terse_command']}")
+        report_lines.append(output["main_output"])
+        report_lines.append(f"$ {output['detailed_command']}")
+        report_lines.append(output["detailed_output"])
+        report_lines.append("=" * 50)
+        return "\n".join(report_lines)
+
+
+register_jobs(JunosInterfaceStatusButton)
